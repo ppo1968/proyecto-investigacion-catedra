@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="acceso.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Proyecto de investigación · Cátedra</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="acceso" role="dialog" aria-modal="true" aria-labelledby="acTit">
+  <form id="acForm" class="ac-caja" autocomplete="off">
+    <img src="marca/Logosimbolo-negativo.png" alt="Universidad de Murcia" class="ac-logo">
+    <h1 id="acTit">Proyecto de investigación</h1>
+    <p class="ac-sub">Concurso de acceso a Catedrático de Universidad. Acceso reservado a la comisión.</p>
+    <label for="acClave">Clave de acceso</label>
+    <div class="ac-fila">
+      <input id="acClave" type="password" required autofocus spellcheck="false" autocapitalize="off">
+      <button type="submit" id="acEntrar">Entrar</button>
+    </div>
+    <p id="acMsg" role="status"></p>
+    <div id="acBarra" hidden><i></i></div>
+  </form>
+</div>
+
+<div id="progreso"><i></i></div>
+<aside id="rail">
+  <div class="rail-cab">
+    <img class="logo" src="marca/Logosimbolo-negativo.png" alt="Universidad de Murcia">
+    <div class="modo" role="group" aria-label="Vista"><button class="mEd" aria-pressed="true">Editor</button><button class="mTr" aria-pressed="false">Tribunal</button></div>
+  </div>
+  <button class="rail-inicio" data-ir="portada"><span>Proyecto de investigación</span><b class="tituloCorto"></b></button>
+  <button class="buscar bBuscar"><span>Buscar en el proyecto</span><kbd>Ctrl K</kbd></button>
+  <button class="rail-ajustes solo-editor bContenido">✎ Editar contenido</button>
+  <button class="rail-ajustes solo-editor" data-ir="ajustes"><span>⚙</span> Ajustes <small>menú vertical u horizontal · generar</small></button>
+  <nav id="nav" aria-label="Apartados"></nav>
+  <div class="rail-pie" id="railPie"></div>
+</aside>
+<header id="barra" aria-label="Menú principal">
+  <button class="b-logo" data-ir="portada"><img src="marca/Logosimbolo-negativo.png" alt="Universidad de Murcia"></button>
+  <nav id="navH"></nav>
+  <div class="b-der">
+    <button class="b-buscar bBuscar" aria-label="Buscar">Buscar <kbd>Ctrl K</kbd></button>
+    <div class="modo" role="group" aria-label="Vista"><button class="mEd" aria-pressed="true">Editor</button><button class="mTr" aria-pressed="false">Tribunal</button></div>
+    <button class="b-aj solo-editor" data-ir="ajustes">Ajustes</button>
+    <button class="b-aj solo-editor bContenido">✎ Editar contenido</button>
+  </div>
+</header>
+<main id="escena" tabindex="-1"></main>
+<div id="buscador" hidden><div class="bu-caja"><input id="buInput" type="search" placeholder="Buscar una palabra, un dato, una referencia…" autocomplete="off"><div id="buRes"></div></div></div>
+<div id="galeria" hidden></div>
+<div id="dif" hidden></div>
+<div id="lupa" hidden><img alt=""></div>
+<div id="barraEd" hidden>
+  <span class="be-t">Editando esta página</span>
+  <button data-cmd="bold" title="Negrita (Ctrl+B)"><b>N</b></button><button data-cmd="italic" title="Cursiva (Ctrl+I)"><i>C</i></button>
+  <span class="be-estado" id="beEstado">Los cambios se guardan solos</span>
+  <button class="be-rest" id="beRest">Volver al texto del Word</button>
+  <button class="be-fin" id="beFin">Terminar</button>
+</div>
+<div id="toast" role="status"></div>
+<script src="acceso.js"></script>
+</body>
+</html>
