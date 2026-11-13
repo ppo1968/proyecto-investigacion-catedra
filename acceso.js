@@ -54,6 +54,16 @@
     try { sessionStorage.setItem('llave', JSON.stringify(await crypto.subtle.exportKey('jwk', llave))); } catch (e) { /* sin almacenamiento */ }
     await arrancar(datos);
   }
+  // El ojo muestra u oculta la clave mientras se escribe.
+  const bVer = $('#acVer');
+  if (bVer) bVer.addEventListener('click', () => {
+    const i = $('#acClave'), ver = i.type === 'password';
+    i.type = ver ? 'text' : 'password';
+    bVer.setAttribute('aria-pressed', String(ver));
+    bVer.setAttribute('aria-label', ver ? 'Ocultar la clave' : 'Mostrar la clave');
+    bVer.title = ver ? 'Ocultar la clave' : 'Mostrar la clave';
+    i.focus();
+  });
   document.addEventListener('contextmenu', (e) => { if (!e.target.closest('input')) e.preventDefault(); });
   (async function () {
     try { conf = JSON.parse(DEC.decode(await traer('cifrado.json'))); } catch (e) { $('#acMsg').textContent = 'No se ha podido conectar. Comprueba la conexión a internet.'; return; }

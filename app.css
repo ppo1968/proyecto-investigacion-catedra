@@ -367,3 +367,13 @@ table.t.ed td, table.t.ed th { min-width: 80px; }
 .vp-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; color: #fff; }
 .vp-cab button { border: 1px solid rgba(255,255,255,.5); background: transparent; color: #fff; border-radius: 8px; padding: 6px 14px; cursor: pointer; }
 #visorPdf iframe { flex: 1; border: 0; background: #fff; }
+
+/* Enlace de la web, siempre a la vista (solo en la aplicación de escritorio) */
+.web-pill { display: inline-flex; align-items: center; gap: 8px; min-width: 0; background: #0d3540; color: #fff; border-radius: 20px; padding: 4px 5px 4px 12px; font-size: 13px; line-height: 1.2; }
+.web-pill i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #888780; }
+.web-pill.bien i { background: #5DCAA5; } .web-pill.cambio i { background: #EF9F27; } .web-pill.mal i { background: #E24B4A; }
+.web-pill .wp-t { white-space: nowrap; color: #c9d3d5; }
+.web-pill .wp-u { color: #ffb3a6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.web-pill button { flex: none; font: inherit; font-size: 12.5px; border-radius: 14px; padding: 3px 10px; cursor: pointer; border: 1px solid #6e8d94; background: transparent; color: #fff; }
+.web-pill button.wp-pri { background: #fff; color: #002028; border-color: #fff; }
+body > .web-pill { position: fixed; right: 28px; bottom: 16px; z-index: 55; max-width: calc(100vw - 32px); box-shadow: 0 10px 30px -12px rgba(0,0,0,.55); border: 1px solid #1f4a55; }

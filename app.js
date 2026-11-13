@@ -538,6 +538,46 @@
       <div class="aj-sec"><h2>Copias de seguridad</h2><p>Antes de guardar se copia tu archivo de cambios en <b>_datos/copias</b> (como máximo una vez por minuto).</p><div class="aj-fila"><button id="ajCopias">Abrir copias de seguridad</button></div></div>
     </section>`;
   }
+
+  /* ---------- Enlace de la web, siempre a la vista (solo aquí, nunca en la versión del tribunal) ---------- */
+  function pastillaWeb(contenedores, irAjustes) {
+    const pills = contenedores.filter(Boolean).map(([caja, alPrincipio]) => {
+      const e = document.createElement('div');
+      e.className = 'web-pill';
+      e.setAttribute('role', 'status');
+      if (alPrincipio) caja.prepend(e); else caja.append(e);
+      return e;
+    });
+    let ultimo = {};
+    const pinta = (s) => {
+      ultimo = { ...ultimo, ...s };
+      const u = ultimo.url, corto = u ? u.replace(/^https?:\/\//, '').replace(/\/$/, '') : '';
+      const hora = ultimo.ultima ? new Date(ultimo.ultima).toLocaleString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
+      let cl = '', t = '', titulo = '';
+      if (ultimo.estado === 'publicando') { cl = 'cambio'; t = 'Actualizando la web…'; titulo = ultimo.texto || ''; }
+      else if (ultimo.estado === 'programado') { cl = 'cambio'; t = 'Cambios por publicar'; titulo = 'Se publicarán solos en unos segundos.'; }
+      else if (ultimo.estado === 'error') { cl = 'mal'; t = 'No se ha podido publicar'; titulo = ultimo.texto || ''; }
+      else if (u) { cl = 'bien'; t = 'En la web:'; titulo = hora ? `Publicado el ${hora}` : ''; }
+      else { t = 'Aún sin publicar'; }
+      pills.forEach((e) => {
+        e.className = 'web-pill ' + cl;
+        e.title = titulo;
+        e.innerHTML = `<i></i><span class="wp-t"></span>${u && cl !== 'mal' ? '<span class="wp-u"></span><button class="wp-pri" data-wp="copiar">Copiar</button><button data-wp="abrir">Abrir</button>' : '<button data-wp="ajustes">Ajustes</button>'}`;
+        e.querySelector('.wp-t').textContent = t;
+        const su = e.querySelector('.wp-u'); if (su) su.textContent = corto;
+        e.querySelectorAll('[data-wp]').forEach((b) => {
+          b.onclick = async (ev) => {
+            ev.stopPropagation();
+            if (b.dataset.wp === 'copiar') { try { await navigator.clipboard.writeText(u); b.textContent = 'Copiado'; setTimeout(() => { b.textContent = 'Copiar'; }, 1600); } catch (x) { b.textContent = 'No se pudo'; } }
+            else if (b.dataset.wp === 'abrir') window.open(u, '_blank');
+            else irAjustes();
+          };
+        });
+      });
+    };
+    window.api.estadoPub().then(pinta);
+    window.api.alPublicacion(pinta);
+  }
   /* ---------- Publicar en la web ---------- */
   let pubVer = false;
   const horaEs = (iso) => (iso ? new Date(iso).toLocaleString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '');
@@ -553,7 +593,7 @@
     const auto = s.modo === 'auto';
     caja.innerHTML = `
       <div class="pub-fila"><span class="pub-et">Cuándo se publica</span><div class="aj-fila"><button data-pm="manual" class="${auto ? '' : 'pub-on'}">Manual</button><button data-pm="auto" class="${auto ? 'pub-on' : ''}">Automático</button></div></div>
-      <p class="pub-nota">${auto ? 'Automático: cuando cambias algo (o guardas una versión nueva del Word), se publica solo al cabo de un minuto y medio.' : 'Manual: se publica cuando pulsas «Publicar ahora».'}</p>
+      <p class="pub-nota">${auto ? 'Automático: cuando cambias algo (o guardas una versión nueva del Word), se publica solo a los 30 segundos.' : 'Manual: se publica cuando pulsas «Publicar ahora».'}</p>
       <div class="pub-fila"><label class="pub-et" for="pubClave">Clave de acceso</label><input id="pubClave" class="pub-in" type="${pubVer ? 'text' : 'password'}" value="${esc(s.clave || '')}" spellcheck="false" autocomplete="off" placeholder="Escribe la clave (mínimo 6 caracteres)"><div class="aj-fila"><button id="pubVer">${pubVer ? 'Ocultar' : 'Mostrar'}</button><button id="pubGuardaClave">Guardar clave</button></div></div>
       <p class="pub-nota">Si cambias la clave, la anterior deja de servir: publica otra vez y envía la nueva al tribunal.</p>
       <div class="pub-fila"><span class="pub-et">Enlace para el tribunal</span>${s.url ? `<a href="${esc(s.url)}" target="_blank" class="pub-url">${esc(s.url)}</a><div class="aj-fila"><button id="pubCopiar">Copiar enlace</button></div>` : '<span class="pub-nota" style="margin:0">Aparecerá después de la primera publicación.</span>'}</div>
@@ -571,6 +611,10 @@
     };
     const bc = $('#pubCopiar'); if (bc) bc.onclick = async () => { try { await navigator.clipboard.writeText(s.url); aviso('Enlace copiado.'); } catch (x) { aviso('No se ha podido copiar.'); } };
     $('#pubYa').onclick = async () => { $('#pubYa').disabled = true; const r = await window.api.publicar(); if (r && r.error) aviso(r.error); pintarPub(); };
+  }
+  if (!CONSULTA) {
+    $$('[data-ir="ajustes"]').forEach((b) => b.classList.remove('solo-editor'));
+    pastillaWeb([[document.body, false]], () => ir('ajustes'));
   }
   if (!CONSULTA) window.api.alPublicacion((s) => {
     const e = $('#pubEst');
@@ -684,7 +728,7 @@
     $$('.mEd').forEach((b) => b.setAttribute('aria-pressed', modo === 'editor')); $$('.mTr').forEach((b) => b.setAttribute('aria-pressed', modo === 'tribunal'));
     $('#barraEd').hidden = !editando;
     if (!P.documento) { e.innerHTML = `<div class="vacio">${esc(P.error || 'No hay índice.')}<br><br>Guarda el Word del proyecto en la carpeta <b>Indices</b> y la aplicación lo leerá sola.</div>`; pintarNav(); return; }
-    if (actual === 'ajustes' && !ed()) actual = 'portada';
+    if (actual === 'ajustes' && CONSULTA) actual = 'portada';
     if (actual !== 'portada' && actual !== 'ajustes' && !visibles().some((p) => p.id === actual)) actual = 'portada';
     pintarNav();
     e.innerHTML = actual === 'portada' ? vistaPortada() : actual === 'ajustes' ? vistaAjustes() : actual === 'abreviaturas' ? vistaAbreviaturas() : vistaPagina(pagina(actual));
