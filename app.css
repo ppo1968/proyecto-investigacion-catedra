@@ -377,3 +377,14 @@ table.t.ed td, table.t.ed th { min-width: 80px; }
 .web-pill button { flex: none; font: inherit; font-size: 12.5px; border-radius: 14px; padding: 3px 10px; cursor: pointer; border: 1px solid #6e8d94; background: transparent; color: #fff; }
 .web-pill button.wp-pri { background: #fff; color: #002028; border-color: #fff; }
 body > .web-pill { position: fixed; right: 28px; bottom: 16px; z-index: 55; max-width: calc(100vw - 32px); box-shadow: 0 10px 30px -12px rgba(0,0,0,.55); border: 1px solid #1f4a55; }
+
+/* v0.8 · PDF y vídeos */
+.pdf-fila { display: flex; gap: 10px; align-items: stretch; }
+.pdf-fila .pdf-b { flex: 1; }
+.pdf-desc { flex: none; padding: 0 18px; border: 1px solid var(--linea); border-radius: 4px; background: var(--papel); color: var(--navy); font: inherit; font-weight: 500; cursor: pointer; }
+.pdf-desc:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+.medio-oculto { display: inline-block; margin: 0 0 8px; padding: 4px 10px; border-radius: 999px; background: #fbe9e5; color: #8a1c0c; font-size: 12px; font-weight: 500; }
+.aj-desc { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--gris); }
+.aj-fila button:disabled { opacity: .45; cursor: not-allowed; }
+#visorPdf .vp-cab button[data-pdf-desc] { margin-left: auto; margin-right: 8px; }
+#secMed .pub-et { width: 400px; }

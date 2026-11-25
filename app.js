@@ -13,6 +13,12 @@
   const esVideo = (r) => /\.(mp4|webm|mov|m4v)$/i.test(r || '');
   const esPdf = (r) => /\.pdf$/i.test(r || '');
   const ed = () => !CONSULTA && modo === 'editor';
+  // Ajustes > PDF y vídeos. Por defecto: PDF visibles sin descarga y vídeos visibles.
+  const MED = () => ({ verPdf: true, descargarPdf: false, videos: true, ...((P.ajustes && P.ajustes.medios) || {}) });
+  const oculto = (src) => (esPdf(src) && !MED().verPdf) || (esVideo(src) && !MED().videos);
+  const nombrePdf = (src) => src.split('/').pop().replace(/\.pdf$/i, '').replace(/_/g, ' ');
+  const tarjetaPdf = (src) => `<div class="pdf-fila"><button class="pdf-b" data-pdf="${esc(src)}"><b>PDF</b><span>${esc(nombrePdf(src))}</span><small>Abrir en una ventana</small></button>${MED().descargarPdf && MED().verPdf ? `<button class="pdf-desc" data-pdf-desc="${esc(src)}" title="Descargar el PDF">Descargar</button>` : ''}</div>`;
+  const marcaOculto = (src) => (ed() && oculto(src) ? `<span class="medio-oculto">No visible para el tribunal (Ajustes › PDF y vídeos)</span>` : '');
 
   function aviso(t, ms = 3800) {
     const e = $('#toast'); e.textContent = t; e.classList.add('ver');
@@ -122,7 +128,7 @@
       else if (b.t === 'lista') dentro = `<ul class="lista">${b.items.map((it, j) => `<li><span ${ce(`${ruta}.i.${j}`)}>${tramos(it)}</span><button data-itemquita="${ruta}" data-item="${j}" class="ed-mini">Eliminar elemento</button></li>`).join('')}</ul>`;
       else if (b.t === 'tabla') dentro = `<div class="tabla-c"><table class="t ed"><thead><tr>${(b.filas[0] || []).map((_, j) => `<th><button data-colquita="${ruta}" data-col="${j}" class="ed-mini">Eliminar columna ${j + 1}</button></th>`).join('')}<th>Filas</th></tr></thead><tbody>${b.filas.map((r, i) => `<tr>${r.map((c, j) => `<td ${ce(`${ruta}.f.${i}.${j}`)}>${celdaHtml(c)}</td>`).join('')}<td><button data-filaquita="${ruta}" data-fila="${i}" class="ed-mini">Eliminar fila</button></td></tr>`).join('')}</tbody></table><div class="ed-fila"><button data-filamas="${ruta}">+ Fila</button><button data-colmas="${ruta}">+ Columna</button></div></div>`;
       else if (b.t === 'img') dentro = `<figure class="fig"><img src="${esc(url('cache/' + b.src))}" alt=""></figure>`;
-      else if (b.t === 'medio') dentro = `<figure class="medio-b">${esPdf(b.src) ? `<button class="pdf-b" data-pdf="${esc(b.src)}"><b>PDF</b><span>${esc(b.src.split('/').pop().replace(/\.pdf$/i, '').replace(/_/g, ' '))}</span><small>Abrir en una ventana</small></button>` : esVideo(b.src) ? `<video src="${esc(url(b.src))}" controls muted playsinline></video>` : `<img src="${esc(url(b.src))}" alt="">`}<figcaption ${ce(`${ruta}.pie`)}>${tramos(b.pie || [])}</figcaption></figure>`;
+      else if (b.t === 'medio') dentro = `<figure class="medio-b">${marcaOculto(b.src)}${esPdf(b.src) ? tarjetaPdf(b.src) : esVideo(b.src) ? `<video src="${esc(url(b.src))}" controls muted playsinline></video>` : `<img src="${esc(url(b.src))}" alt="">`}<figcaption ${ce(`${ruta}.pie`)}>${tramos(b.pie || [])}</figcaption></figure>`;
       return `<div class="blk">${herr}${dentro}</div>`;
     }
     if (b.t === 'p') {
@@ -133,7 +139,8 @@
     if (b.t === 'lista') return `<ul class="lista rev">${b.items.map((it) => `<li>${tramos(it)}</li>`).join('')}</ul>`;
     if (b.t === 'pie') return `<p class="pie rev">${tramos(b.tramos)}</p>`;
     if (b.t === 'img') return `<figure class="fig rev" data-lupa="${esc(url('cache/' + b.src))}"><img src="${esc(url('cache/' + b.src))}" alt="" loading="lazy"></figure>`;
-    if (b.t === 'medio') return `<figure class="medio-b rev">${esPdf(b.src) ? `<button class="pdf-b" data-pdf="${esc(b.src)}"><b>PDF</b><span>${esc(b.src.split('/').pop().replace(/\.pdf$/i, '').replace(/_/g, ' '))}</span><small>Abrir en una ventana</small></button>` : esVideo(b.src) ? `<video src="${esc(url(b.src))}" controls playsinline preload="metadata"></video>` : `<img src="${esc(url(b.src))}" alt="" loading="lazy" data-lupa-foto="${esc(url(b.src))}">`}${b.pie && plano(b.pie) ? `<figcaption>${tramos(b.pie)}</figcaption>` : ''}</figure>`;
+    if (b.t === 'medio' && !ed() && oculto(b.src)) return '';
+    if (b.t === 'medio') return `<figure class="medio-b rev">${marcaOculto(b.src)}${esPdf(b.src) ? tarjetaPdf(b.src) : esVideo(b.src) ? `<video src="${esc(url(b.src))}" controls playsinline preload="metadata"></video>` : `<img src="${esc(url(b.src))}" alt="" loading="lazy" data-lupa-foto="${esc(url(b.src))}">`}${b.pie && plano(b.pie) ? `<figcaption>${tramos(b.pie)}</figcaption>` : ''}</figure>`;
     if (b.t === 'tabla') return tabla(b);
     return '';
   }
@@ -441,20 +448,28 @@
     w.document.body.style.cssText = 'margin:0;background:#00151b';
     const f = w.document.createElement('iframe');
     f.style.cssText = 'border:0;width:100vw;height:100vh;display:block';
-    f.src = url(rel) + '#toolbar=0&navpanes=0&view=FitH';
+    f.src = url(rel) + (MED().descargarPdf ? '#navpanes=0&view=FitH' : '#toolbar=0&navpanes=0&view=FitH');
     w.document.body.append(f);
-    w.document.addEventListener('contextmenu', (e) => e.preventDefault());
+    if (!MED().descargarPdf) w.document.addEventListener('contextmenu', (e) => e.preventDefault());
   }
   // Si el navegador bloquea las ventanas emergentes, el PDF se abre en un visor grande dentro de la página.
   function visorPdf(rel, nombre) {
     let v = $('#visorPdf');
     if (!v) { v = document.createElement('div'); v.id = 'visorPdf'; document.body.append(v); }
-    v.innerHTML = `<div class="vp-cab"><b>${esc(nombre)}</b><button id="vpCerrar">Cerrar</button></div><iframe title="${esc(nombre)}" src="${esc(url(rel))}#toolbar=0&navpanes=0&view=FitH"></iframe>`;
+    v.innerHTML = `<div class="vp-cab"><b>${esc(nombre)}</b>${MED().descargarPdf ? `<button data-pdf-desc="${esc(rel)}">Descargar</button>` : ''}<button id="vpCerrar">Cerrar</button></div><iframe title="${esc(nombre)}" src="${esc(url(rel))}${MED().descargarPdf ? '#navpanes=0&view=FitH' : '#toolbar=0&navpanes=0&view=FitH'}"></iframe>`;
     v.hidden = false;
     $('#vpCerrar').onclick = () => { v.hidden = true; v.innerHTML = ''; };
   }
   document.addEventListener('keydown', (e) => { const v = $('#visorPdf'); if (e.key === 'Escape' && v && !v.hidden) { v.hidden = true; v.innerHTML = ''; } });
+  async function descargarPdf(rel) {
+    if (!MED().descargarPdf) return;
+    if (!CONSULTA) { const r = await window.api.descargarPdf(rel); if (r && r.ok) aviso('PDF guardado.'); else if (r && r.error) aviso(r.error, 6000); return; }
+    const a = document.createElement('a');
+    a.href = url(rel); a.download = rel.split('/').pop(); document.body.append(a); a.click(); a.remove();
+  }
   document.addEventListener('click', (e) => {
+    const d = e.target.closest('[data-pdf-desc]');
+    if (d && !e.target.closest('[contenteditable="true"]')) { e.preventDefault(); descargarPdf(d.dataset.pdfDesc); return; }
     const b = e.target.closest('[data-pdf]');
     if (!b || e.target.closest('[contenteditable="true"]')) return;
     e.preventDefault(); abrirPdf(b.dataset.pdf);
@@ -530,6 +545,8 @@
         <label class="campo">Cifra<input id="ajCifra" value="${esc(per.cifra || '')}"></label><label class="campo">Texto<input id="ajTexto" value="${esc(per.texto || '')}"></label></div>
       <div class="aj-sec"><h2>Índice del proyecto</h2><p>${P.fuente ? `Ahora se lee <b>${esc(P.fuente.nombre)}</b>. Se usa siempre el número de versión más alto de la carpeta Indices, al abrir y al guardar el Word.` : esc(P.error || '')}</p>
         <div class="aj-fila"><button id="ajReleer">Comprobar ahora</button><button id="ajIndices">Abrir carpeta Indices</button></div></div>
+      <div class="aj-sec" id="secMed"><h2>PDF y vídeos</h2><p>Qué ve el tribunal en las páginas. Se aplica a la vista Tribunal, a la web publicada y a las versiones que generes; en el modo Editor siempre los ves, marcados si están ocultos.</p>
+        ${[['verPdf', 'Mostrar los PDF', 'Tarjetas de los documentos PDF insertados en las páginas.'], ['descargarPdf', 'Permitir descargar los PDF', 'Añade el botón «Descargar» y la barra del visor de PDF.'], ['videos', 'Mostrar los vídeos', 'Vídeos insertados en las páginas (no afecta a los fondos de cabecera).']].map(([k, t, d]) => `<div class="pub-fila"><span class="pub-et">${t}<small class="aj-desc">${d}</small></span><div class="aj-fila"><button data-medk="${k}" data-medv="1" class="${MED()[k] ? 'pub-on' : ''}" ${k === 'descargarPdf' && !MED().verPdf ? 'disabled' : ''}>Sí</button><button data-medk="${k}" data-medv="0" class="${MED()[k] ? '' : 'pub-on'}" ${k === 'descargarPdf' && !MED().verPdf ? 'disabled' : ''}>No</button></div></div>`).join('')}</div>
       <div class="aj-sec"><h2>Fotos y vídeos</h2><p>${(P.medios || []).length} elementos en <b>_datos/medios</b>. Puedes añadir más desde el ordenador o copiarlos en esa carpeta.</p>
         <div class="aj-fila"><button id="ajAnadir">Añadir fotos, vídeos o PDF…</button><button id="ajMedios">Abrir carpeta de medios</button></div></div>
       <div class="aj-sec"><h2>Generar la versión del tribunal</h2><p>Sale exactamente como la vista Tribunal: sin páginas ocultas y sin modo editor. Elige una carpeta corta, como el Escritorio o un pendrive.</p>
@@ -645,6 +662,17 @@
     $('#ajCopias').onclick = () => window.api.abrirCarpeta('copias');
     $('#ajAnadir').onclick = async () => { const r = await window.api.anadirMedios(); P.medios = r.medios; pintar(true); if (r.nuevos) aviso(`${r.nuevos.length} copiados a _datos/medios.`); };
     $$('[data-g]', e).forEach((b) => { b.onclick = () => generarVersion(b.dataset.g); });
+    $$('[data-medk]', e).forEach((b) => { b.onclick = async () => {
+      const k = b.dataset.medk, v = b.dataset.medv === '1';
+      if (MED()[k] === v) return;
+      const m = { ...MED(), [k]: v };
+      if (k === 'verPdf' && !v) m.descargarPdf = false;
+      P.ajustes.medios = m;
+      if (CONSULTA) return;
+      await window.api.ajuste('medios', m);
+      pintar(true);
+      aviso({ verPdf: v ? 'El tribunal verá los PDF.' : 'Los PDF quedan ocultos al tribunal.', descargarPdf: v ? 'Los PDF se podrán descargar.' : 'Los PDF no se podrán descargar.', videos: v ? 'El tribunal verá los vídeos.' : 'Los vídeos quedan ocultos al tribunal.' }[k]);
+    }; });
   }
   async function generarVersion(tipo) {
     if (generando) return;
