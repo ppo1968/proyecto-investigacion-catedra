@@ -392,3 +392,9 @@ body > .web-pill { position: fixed; right: 28px; bottom: 16px; z-index: 55; max-
 .b-desc { background: var(--acento) !important; border-color: var(--acento) !important; color: #fff !important; }
 .b-desc[hidden], .rail-desc[hidden] { display: none !important; }
 .rail-desc { display: block; width: 100%; margin-top: 10px; padding: 9px 12px; border-radius: 10px; border: 0; background: var(--acento); color: #fff; font: inherit; font-weight: 500; cursor: pointer; }
+
+.enl-med { display: inline-block; margin: 2px 6px 2px 0; padding: 4px 12px; border-radius: 999px; font-size: 14px; font-weight: 500; text-decoration: none !important; white-space: nowrap; }
+.enl-pdf { background: var(--acento); color: #fff !important; }
+.enl-vid { background: var(--navy); color: #fff !important; }
+.enl-med:hover { filter: brightness(1.15); }
+.medio-dest { outline: 4px solid var(--acento); outline-offset: 6px; border-radius: 18px; transition: outline-color .6s; }

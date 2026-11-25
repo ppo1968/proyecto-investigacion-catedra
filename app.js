@@ -58,7 +58,9 @@
     if (x.sup) s = `<sup>${s}</sup>`;
     if (x.i) s = `<em>${s}</em>`;
     if (x.b) s = `<strong>${s}</strong>`;
-    if (x.href) s = `<a href="${esc(x.href)}" target="_blank">${s}</a>`;
+    if (x.href && /^pdf:/.test(x.href)) { const r = x.href.slice(4); s = oculto(r) ? s : `<a href="#" class="enl-med enl-pdf" data-pdf="${esc(r)}">${s}</a>`; }
+    else if (x.href && /^video:/.test(x.href)) { const r = x.href.slice(6); s = oculto(r) ? s : `<a href="#" class="enl-med enl-vid" data-ir-video="${esc(r)}">${s}</a>`; }
+    else if (x.href) s = `<a href="${esc(x.href)}" target="_blank">${s}</a>`;
     return s;
   }).join('');
   const plano = (t) => (t || []).map((x) => x.x).join('').trim();
@@ -128,7 +130,7 @@
       else if (b.t === 'lista') dentro = `<ul class="lista">${b.items.map((it, j) => `<li><span ${ce(`${ruta}.i.${j}`)}>${tramos(it)}</span><button data-itemquita="${ruta}" data-item="${j}" class="ed-mini">Eliminar elemento</button></li>`).join('')}</ul>`;
       else if (b.t === 'tabla') dentro = `<div class="tabla-c"><table class="t ed"><thead><tr>${(b.filas[0] || []).map((_, j) => `<th><button data-colquita="${ruta}" data-col="${j}" class="ed-mini">Eliminar columna ${j + 1}</button></th>`).join('')}<th>Filas</th></tr></thead><tbody>${b.filas.map((r, i) => `<tr>${r.map((c, j) => `<td ${ce(`${ruta}.f.${i}.${j}`)}>${celdaHtml(c)}</td>`).join('')}<td><button data-filaquita="${ruta}" data-fila="${i}" class="ed-mini">Eliminar fila</button></td></tr>`).join('')}</tbody></table><div class="ed-fila"><button data-filamas="${ruta}">+ Fila</button><button data-colmas="${ruta}">+ Columna</button></div></div>`;
       else if (b.t === 'img') dentro = `<figure class="fig"><img src="${esc(url('cache/' + b.src))}" alt=""></figure>`;
-      else if (b.t === 'medio') dentro = `<figure class="medio-b">${marcaOculto(b.src)}${esPdf(b.src) ? tarjetaPdf(b.src) : esVideo(b.src) ? `<video src="${esc(url(b.src))}" controls muted playsinline></video>` : `<img src="${esc(url(b.src))}" alt="">`}<figcaption ${ce(`${ruta}.pie`)}>${tramos(b.pie || [])}</figcaption></figure>`;
+      else if (b.t === 'medio') dentro = `<figure class="medio-b" data-medio="${esc(b.src)}">${marcaOculto(b.src)}${esPdf(b.src) ? tarjetaPdf(b.src) : esVideo(b.src) ? `<video src="${esc(url(b.src))}" controls muted playsinline></video>` : `<img src="${esc(url(b.src))}" alt="">`}<figcaption ${ce(`${ruta}.pie`)}>${tramos(b.pie || [])}</figcaption></figure>`;
       return `<div class="blk">${herr}${dentro}</div>`;
     }
     if (b.t === 'p') {
@@ -140,7 +142,7 @@
     if (b.t === 'pie') return `<p class="pie rev">${tramos(b.tramos)}</p>`;
     if (b.t === 'img') return `<figure class="fig rev" data-lupa="${esc(url('cache/' + b.src))}"><img src="${esc(url('cache/' + b.src))}" alt="" loading="lazy"></figure>`;
     if (b.t === 'medio' && !ed() && oculto(b.src)) return '';
-    if (b.t === 'medio') return `<figure class="medio-b rev">${marcaOculto(b.src)}${esPdf(b.src) ? tarjetaPdf(b.src) : esVideo(b.src) ? `<video src="${esc(url(b.src))}" controls playsinline preload="metadata"></video>` : `<img src="${esc(url(b.src))}" alt="" loading="lazy" data-lupa-foto="${esc(url(b.src))}">`}${b.pie && plano(b.pie) ? `<figcaption>${tramos(b.pie)}</figcaption>` : ''}</figure>`;
+    if (b.t === 'medio') return `<figure class="medio-b rev" data-medio="${esc(b.src)}">${marcaOculto(b.src)}${esPdf(b.src) ? tarjetaPdf(b.src) : esVideo(b.src) ? `<video src="${esc(url(b.src))}" controls playsinline preload="metadata"></video>` : `<img src="${esc(url(b.src))}" alt="" loading="lazy" data-lupa-foto="${esc(url(b.src))}">`}${b.pie && plano(b.pie) ? `<figcaption>${tramos(b.pie)}</figcaption>` : ''}</figure>`;
     if (b.t === 'tabla') return tabla(b);
     return '';
   }
@@ -467,6 +469,28 @@
     const a = document.createElement('a');
     a.href = url(rel); a.download = rel.split('/').pop(); document.body.append(a); a.click(); a.remove();
   }
+  // Enlace «Vídeo» de una tabla: abre la página donde está ese vídeo, lo centra y lo reproduce.
+  function irVideo(rel) {
+    const tiene = (l) => (l || []).some((b) => b.t === 'medio' && b.src === rel);
+    const pg = (EF() ? EF().paginas : []).find((p) => tiene(p.bloques) || (p.subs || []).some((s) => tiene(s.bloques)));
+    if (!pg) { aviso('No encuentro ese vídeo en el proyecto.'); return; }
+    ir(pg.id);
+    let n = 0;
+    const busca = () => {
+      const f = $$('[data-medio]').find((e) => e.dataset.medio === rel);
+      if (!f) { if (++n < 30) setTimeout(busca, 100); return; }
+      f.classList.add('vis', 'in', 'on');
+      f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      f.classList.add('medio-dest'); setTimeout(() => f.classList.remove('medio-dest'), 2500);
+      const v = f.querySelector('video'); if (v) { v.muted = false; v.play().catch(() => { v.muted = true; v.play().catch(() => {}); }); }
+    };
+    setTimeout(busca, 150);
+  }
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-ir-video]');
+    if (!a || e.target.closest('[contenteditable="true"]')) return;
+    e.preventDefault(); irVideo(a.dataset.irVideo);
+  });
   async function descargarProyecto() {
     if (!(MED().descargarProyecto && P.pdfProyecto)) return;
     if (!CONSULTA) { const r = await window.api.descargarPdf(P.pdfProyecto); if (r && r.ok) aviso('Proyecto guardado.'); else if (r && r.error) aviso(r.error, 6000); return; }
