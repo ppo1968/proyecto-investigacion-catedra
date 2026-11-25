@@ -14,7 +14,7 @@
   const esPdf = (r) => /\.pdf$/i.test(r || '');
   const ed = () => !CONSULTA && modo === 'editor';
   // Ajustes > PDF y vídeos. Por defecto: PDF visibles sin descarga y vídeos visibles.
-  const MED = () => ({ verPdf: true, descargarPdf: false, videos: true, ...((P.ajustes && P.ajustes.medios) || {}) });
+  const MED = () => ({ verPdf: true, descargarPdf: false, videos: true, descargarProyecto: false, ...((P.ajustes && P.ajustes.medios) || {}) });
   const oculto = (src) => (esPdf(src) && !MED().verPdf) || (esVideo(src) && !MED().videos);
   const nombrePdf = (src) => src.split('/').pop().replace(/\.pdf$/i, '').replace(/_/g, ' ');
   const tarjetaPdf = (src) => `<div class="pdf-fila"><button class="pdf-b" data-pdf="${esc(src)}"><b>PDF</b><span>${esc(nombrePdf(src))}</span><small>Abrir en una ventana</small></button>${MED().descargarPdf && MED().verPdf ? `<button class="pdf-desc" data-pdf-desc="${esc(src)}" title="Descargar el PDF">Descargar</button>` : ''}</div>`;
@@ -462,10 +462,16 @@
   }
   document.addEventListener('keydown', (e) => { const v = $('#visorPdf'); if (e.key === 'Escape' && v && !v.hidden) { v.hidden = true; v.innerHTML = ''; } });
   async function descargarPdf(rel) {
-    if (!MED().descargarPdf) return;
+    if (!MED().descargarPdf && !(rel === P.pdfProyecto && MED().descargarProyecto)) return;
     if (!CONSULTA) { const r = await window.api.descargarPdf(rel); if (r && r.ok) aviso('PDF guardado.'); else if (r && r.error) aviso(r.error, 6000); return; }
     const a = document.createElement('a');
     a.href = url(rel); a.download = rel.split('/').pop(); document.body.append(a); a.click(); a.remove();
+  }
+  async function descargarProyecto() {
+    if (!(MED().descargarProyecto && P.pdfProyecto)) return;
+    if (!CONSULTA) { const r = await window.api.descargarPdf(P.pdfProyecto); if (r && r.ok) aviso('Proyecto guardado.'); else if (r && r.error) aviso(r.error, 6000); return; }
+    const a = document.createElement('a');
+    a.href = url(P.pdfProyecto); a.download = 'Proyecto_de_investigacion.pdf'; document.body.append(a); a.click(); a.remove();
   }
   document.addEventListener('click', (e) => {
     const d = e.target.closest('[data-pdf-desc]');
@@ -545,8 +551,8 @@
         <label class="campo">Cifra<input id="ajCifra" value="${esc(per.cifra || '')}"></label><label class="campo">Texto<input id="ajTexto" value="${esc(per.texto || '')}"></label></div>
       <div class="aj-sec"><h2>Índice del proyecto</h2><p>${P.fuente ? `Ahora se lee <b>${esc(P.fuente.nombre)}</b>. Se usa siempre el número de versión más alto de la carpeta Indices, al abrir y al guardar el Word.` : esc(P.error || '')}</p>
         <div class="aj-fila"><button id="ajReleer">Comprobar ahora</button><button id="ajIndices">Abrir carpeta Indices</button></div></div>
-      <div class="aj-sec" id="secMed"><h2>PDF y vídeos</h2><p>Qué ve el tribunal en las páginas. Se aplica a la vista Tribunal, a la web publicada y a las versiones que generes; en el modo Editor siempre los ves, marcados si están ocultos.</p>
-        ${[['verPdf', 'Mostrar los PDF', 'Tarjetas de los documentos PDF insertados en las páginas.'], ['descargarPdf', 'Permitir descargar los PDF', 'Añade el botón «Descargar» y la barra del visor de PDF.'], ['videos', 'Mostrar los vídeos', 'Vídeos insertados en las páginas (no afecta a los fondos de cabecera).']].map(([k, t, d]) => `<div class="pub-fila"><span class="pub-et">${t}<small class="aj-desc">${d}</small></span><div class="aj-fila"><button data-medk="${k}" data-medv="1" class="${MED()[k] ? 'pub-on' : ''}" ${k === 'descargarPdf' && !MED().verPdf ? 'disabled' : ''}>Sí</button><button data-medk="${k}" data-medv="0" class="${MED()[k] ? '' : 'pub-on'}" ${k === 'descargarPdf' && !MED().verPdf ? 'disabled' : ''}>No</button></div></div>`).join('')}</div>
+      <div class="aj-sec" id="secMed"><h2>PDF, vídeos y descargas</h2><p>Qué ve el tribunal en las páginas. Se aplica a la vista Tribunal, a la web publicada y a las versiones que generes; en el modo Editor siempre los ves, marcados si están ocultos.</p>
+        ${[['verPdf', 'Mostrar los PDF', 'Tarjetas de los documentos PDF insertados en las páginas.'], ['descargarPdf', 'Permitir descargar los PDF', 'Añade el botón «Descargar» y la barra del visor de PDF.'], ['videos', 'Mostrar los vídeos', 'Vídeos insertados en las páginas (no afecta a los fondos de cabecera).'], ['descargarProyecto', 'Permitir descargar el proyecto de investigación', P.pdfProyecto ? 'Añade el botón «Descargar proyecto» (PDF) en la barra superior.' : 'Falta el PDF: guárdalo como _datos/medios/Proyecto_de_investigacion.pdf.']].map(([k, t, d]) => `<div class="pub-fila"><span class="pub-et">${t}<small class="aj-desc">${d}</small></span><div class="aj-fila"><button data-medk="${k}" data-medv="1" class="${MED()[k] ? 'pub-on' : ''}" ${k === 'descargarPdf' && !MED().verPdf ? 'disabled' : ''}>Sí</button><button data-medk="${k}" data-medv="0" class="${MED()[k] ? '' : 'pub-on'}" ${k === 'descargarPdf' && !MED().verPdf ? 'disabled' : ''}>No</button></div></div>`).join('')}</div>
       <div class="aj-sec"><h2>Fotos y vídeos</h2><p>${(P.medios || []).length} elementos en <b>_datos/medios</b>. Puedes añadir más desde el ordenador o copiarlos en esa carpeta.</p>
         <div class="aj-fila"><button id="ajAnadir">Añadir fotos, vídeos o PDF…</button><button id="ajMedios">Abrir carpeta de medios</button></div></div>
       <div class="aj-sec"><h2>Generar la versión del tribunal</h2><p>Sale exactamente como la vista Tribunal: sin páginas ocultas y sin modo editor. Elige una carpeta corta, como el Escritorio o un pendrive.</p>
@@ -671,7 +677,7 @@
       if (CONSULTA) return;
       await window.api.ajuste('medios', m);
       pintar(true);
-      aviso({ verPdf: v ? 'El tribunal verá los PDF.' : 'Los PDF quedan ocultos al tribunal.', descargarPdf: v ? 'Los PDF se podrán descargar.' : 'Los PDF no se podrán descargar.', videos: v ? 'El tribunal verá los vídeos.' : 'Los vídeos quedan ocultos al tribunal.' }[k]);
+      aviso({ verPdf: v ? 'El tribunal verá los PDF.' : 'Los PDF quedan ocultos al tribunal.', descargarPdf: v ? 'Los PDF se podrán descargar.' : 'Los PDF no se podrán descargar.', descargarProyecto: v ? 'El tribunal podrá descargar el proyecto.' : 'El proyecto no se podrá descargar.', videos: v ? 'El tribunal verá los vídeos.' : 'Los vídeos quedan ocultos al tribunal.' }[k]);
     }; });
   }
   async function generarVersion(tipo) {
@@ -750,6 +756,14 @@
   function pintar(conservar) {
     const e = $('#escena'), arriba = e.scrollTop;
     document.body.classList.toggle('tribunal', modo === 'tribunal');
+    // Botón «Descargar proyecto» (Ajustes › PDF, vídeos y descargas)
+    const verDesc = !!(MED().descargarProyecto && P.pdfProyecto);
+    [['#barra .b-der', 'b-aj b-desc'], ['.rail-cab', 'rail-desc']].forEach(([sel, cl]) => {
+      const caja = $(sel); if (!caja) return;
+      let b = caja.querySelector('[data-desc-proy]');
+      if (!b) { b = document.createElement('button'); b.className = cl; b.dataset.descProy = '1'; b.textContent = '⇩ Descargar proyecto'; b.title = 'Descargar el proyecto de investigación (PDF)'; b.onclick = () => descargarProyecto(); caja.prepend(b); }
+      b.hidden = !verDesc;
+    });
     document.body.classList.toggle('consulta', CONSULTA);
     document.body.classList.toggle('horiz', (P.ajustes.menu || 'vertical') === 'horizontal');
     document.body.classList.toggle('editando', editando);

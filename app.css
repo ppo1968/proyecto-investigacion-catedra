@@ -388,3 +388,7 @@ body > .web-pill { position: fixed; right: 28px; bottom: 16px; z-index: 55; max-
 .aj-fila button:disabled { opacity: .45; cursor: not-allowed; }
 #visorPdf .vp-cab button[data-pdf-desc] { margin-left: auto; margin-right: 8px; }
 #secMed .pub-et { width: 400px; }
+
+.b-desc { background: var(--acento) !important; border-color: var(--acento) !important; color: #fff !important; }
+.b-desc[hidden], .rail-desc[hidden] { display: none !important; }
+.rail-desc { display: block; width: 100%; margin-top: 10px; padding: 9px 12px; border-radius: 10px; border: 0; background: var(--acento); color: #fff; font: inherit; font-weight: 500; cursor: pointer; }
