@@ -298,7 +298,7 @@
           <p class="p-sub">${esc(sub || '')}</p>
           <div class="p-autor"><div><b>${esc(autor || '')}</b>${esc(resto[0] || '')}</div><div><b>${esc(resto[2] || '')}</b>${esc(resto[1] || '')}</div><div><b>${esc((resto[3] || '').split('·')[0])}</b>${esc((resto[3] || '').split('·').slice(1).join('·'))}</div></div>
         </div>
-        <div class="p-acciones"><button class="p-entrar" data-ir="${primera.id}">Entrar en el proyecto <span>→</span></button>${ed() && !docsVisibles().length ? '<button class="p-desc pendiente" title="Solo lo ves tú">⇩ Descargar el proyecto <small>falta generar los documentos (Ajustes)</small></button>' : ''}${docsVisibles().length && (ed() || DOC().enPortada) ? `<button class="p-desc">⇩ Descargar el proyecto <small>${[...new Set(docsVisibles().map((x) => (x.formato === 'pdf' ? 'PDF' : 'Word')))].sort().reverse().join(' · ')}</small></button>` : ''}</div>
+        <div class="p-acciones"><button class="p-entrar" data-ir="${primera.id}">Entrar en el proyecto <span>→</span></button>${ed() && !docsVisibles().length ? '<button class="p-desc pendiente" title="Solo lo ves tú">' + ICO_DESC + 'Descargar el proyecto <small>falta generar los documentos (Ajustes)</small></button>' : ''}${docsVisibles().length && (ed() || DOC().enPortada) ? `<button class="p-desc">${ICO_DESC}Descargar el proyecto <small>${[...new Set(docsVisibles().map((x) => (x.formato === 'pdf' ? 'PDF' : 'Word')))].sort().reverse().join(' · ')}</small></button>` : ''}</div>
         ${ecg('p-ecg')}
       </div>
       ${cifras ? `<div class="cifras-banda">${cifras.filas[0].map((c) => `<div class="cifra-g rev"><strong data-cuenta="${esc(plano(c.lineas[0]))}">${esc(plano(c.lineas[0]))}</strong><span>${c.lineas.slice(1).map(tramos).join(' ')}</span></div>`).join('')}</div>` : ''}
@@ -663,6 +663,7 @@
 
 
   /* ---------- v0.9 · Documentos del proyecto (Word y PDF) ---------- */
+  const ICO_DESC = '<svg class="ic-desc" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11.5m0 0l-4.6-4.6M12 15l4.6-4.6M4.5 20h15"/></svg>';
   const ESTD = () => P.estilosDoc || { institucional: 'Institucional', editorial: 'Editorial con fotografías', clasico: 'Académico clásico' };
   const DESC_ESTD = { institucional: 'Portada blanca con franja granate y número de capítulo grande. Bahnschrift (DIN) y Arial.', editorial: 'Portada y capítulos con fotografías reales de las sesiones, contraportada. Texto en Georgia.', clasico: 'Composición centrada, títulos con letra de libro y texto justificado. Sin fotografías.' };
   function DOC() {
@@ -994,7 +995,7 @@
     [['#barra .b-der', 'b-aj b-desc'], ['.rail-cab', 'rail-desc']].forEach(([sel, cl]) => {
       const caja = $(sel); if (!caja) return;
       let b = caja.querySelector('[data-desc-proy]');
-      if (!b) { b = document.createElement('button'); b.className = cl; b.dataset.descProy = '1'; b.textContent = '⇩ Descargar proyecto'; b.title = 'Descargar el proyecto de investigación'; b.onclick = () => abrirDescargas(); caja.prepend(b); }
+      if (!b) { b = document.createElement('button'); b.className = cl; b.dataset.descProy = '1'; b.innerHTML = ICO_DESC + '<span>Descargar proyecto</span>'; b.title = 'Descargar el proyecto de investigación'; b.onclick = () => abrirDescargas(); caja.prepend(b); }
       b.hidden = !verDesc;
     });
     document.body.classList.toggle('consulta', CONSULTA || !!PREVIA);

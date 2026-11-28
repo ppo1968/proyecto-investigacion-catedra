@@ -436,7 +436,7 @@ body.pf-movil .b-der, body.pf-tablet .b-der { margin-left: auto; gap: 8px; }
 body.pf-movil .b-der .modo, body.pf-movil .b-aj:not(.b-desc), body.pf-tablet .b-der .modo { display: none; }
 body.pf-movil .b-buscar kbd, body.pf-tablet .b-buscar kbd, body.pf-movil .buscar kbd, body.pf-tablet .buscar kbd { display: none; }
 body.pf-movil .b-buscar, body.pf-tablet .b-buscar { padding: 9px 12px; font-size: 14px; }
-body.pf-movil .b-desc { font-size: 0 !important; padding: 9px 11px; } body.pf-movil .b-desc::before { content: '⇩'; font-size: 17px; line-height: 1; }
+body.pf-movil .b-desc { padding: 9px 11px; } body.pf-movil .b-desc span { display: none; } body.pf-movil .b-desc .ic-desc { margin: 0; width: 18px; height: 18px; }
 body.pf-movil .rail-ajustes, body.pf-tablet .rail-ajustes { display: none; }
 body.pf-movil .nv, body.pf-tablet .nv { padding: 11px 12px; font-size: 15px; }
 body.pf-movil > .web-pill { display: none; }
@@ -673,3 +673,5 @@ body.pf-movil .doc-f { grid-template-columns: 48px 1fr; }
 .doc-estado.aviso { background: #fff4dc; color: #6b4b00; }
 .doc-estado.bien { background: #e6f4ea; color: #1e6b3a; }
 .p-desc.pendiente { border-style: dashed; opacity: .85; }
+.ic-desc { width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.2em; margin-right: 8px; flex: none; }
+.p-desc, .b-desc { display: inline-flex; align-items: center; }
