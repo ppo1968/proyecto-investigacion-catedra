@@ -20,6 +20,69 @@
   const tarjetaPdf = (src) => `<div class="pdf-fila"><button class="pdf-b" data-pdf="${esc(src)}"><b>PDF</b><span>${esc(nombrePdf(src))}</span><small>Abrir en una ventana</small></button>${MED().descargarPdf && MED().verPdf ? `<button class="pdf-desc" data-pdf-desc="${esc(src)}" title="Descargar el PDF">Descargar</button>` : ''}</div>`;
   const marcaOculto = (src) => (ed() && oculto(src) ? `<span class="medio-oculto">No visible para el tribunal (Ajustes › PDF y vídeos)</span>` : '');
 
+  /* ---------- v0.9 · Pantallas: teléfono, tablet, ordenador y pantalla grande ----------
+     En Ajustes se marcan los tipos de pantalla para los que se prepara el proyecto. Cada pantalla usa su propio diseño
+     si está marcada; si no, el del tipo marcado más parecido: uno mayor se ve reducido entero (como una web de
+     ordenador en el móvil) y uno menor se ve centrado con márgenes. El modo Editor usa siempre el de ordenador. */
+  const DISPOS = [
+    { id: 'movil', nombre: 'Teléfono', hasta: 700, lienzo: 430, rango: 'hasta 700 px de ancho' },
+    { id: 'tablet', nombre: 'Tablet', hasta: 1180, lienzo: 1024, rango: 'de 701 a 1180 px' },
+    { id: 'ordenador', nombre: 'Ordenador', hasta: 1919, lienzo: 1440, rango: 'de 1181 a 1919 px' },
+    { id: 'grande', nombre: 'Pantalla grande o proyector', hasta: Infinity, lienzo: 1920, rango: 'desde 1920 px, letra más grande' },
+  ];
+  const DISP_DEF = { movil: true, tablet: true, ordenador: true, grande: false };
+  const DISP = () => ({ ...DISP_DEF, ...((P.ajustes && P.ajustes.dispositivos) || {}) });
+  const PREVIA = !CONSULTA && new URLSearchParams(location.search).get('previa');
+  if (PREVIA) modo = 'tribunal';
+  const tactil = () => matchMedia('(pointer: coarse)').matches;
+  // Ancho real de la pantalla en píxeles CSS. En móviles y tablets se mide la pantalla (y su orientación), porque el
+  // ancho de la ventana cambia cuando se reduce la página; en ordenadores, la ventana.
+  function anchoReal() {
+    if (!tactil() || !screen.width) return innerWidth;
+    const a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height);
+    return matchMedia('(orientation: landscape)').matches ? b : a;
+  }
+  const tipoDe = (w) => DISPOS.find((d) => w <= d.hasta).id;
+  const pos = (id) => DISPOS.findIndex((d) => d.id === id);
+  // El diseño que se usa en una pantalla de tipo «real» con la selección «sel».
+  function disenoPara(real, sel) {
+    if (sel[real]) return real;
+    const i = pos(real);
+    for (let k = i + 1; k < DISPOS.length; k++) if (sel[DISPOS[k].id]) return DISPOS[k].id;
+    for (let k = i - 1; k >= 0; k--) if (sel[DISPOS[k].id]) return DISPOS[k].id;
+    return real;
+  }
+  let perfilAct = null;
+  function aplicarPerfil() {
+    const w = anchoReal(), real = tipoDe(w), pf = ed() ? 'ordenador' : disenoPara(real, DISP());
+    const b = document.body;
+    DISPOS.forEach((d) => b.classList.toggle('pf-' + d.id, d.id === pf));
+    // Diseño de teléfono o tablet en una pantalla mayor: se centra con márgenes y un ancho máximo.
+    const encaja = !ed() && pos(pf) < pos(real) && pos(pf) < pos('ordenador');
+    b.classList.toggle('encajado', encaja);
+    b.style.setProperty('--encaje', DISPOS[pos(pf)].lienzo + 'px');
+    // Diseño mayor que la pantalla de un móvil o tablet: la página se reduce entera para que quepa.
+    const vp = document.querySelector('meta[name="viewport"]');
+    if (vp) {
+      const c = tactil() && pos(pf) > pos(real) ? `width=${DISPOS[pos(pf)].lienzo}` : 'width=device-width,initial-scale=1,viewport-fit=cover';
+      if (vp.getAttribute('content') !== c) vp.setAttribute('content', c);
+    }
+    if (pf !== perfilAct) { const antes = perfilAct; perfilAct = pf; if (antes && P.documento) pintar(true); }
+    if (!['movil', 'tablet'].includes(pf)) menuMovil(false);
+  }
+  function menuMovil(abrir) {
+    document.body.classList.toggle('menu-abierto', !!abrir);
+    $$('.b-menu').forEach((b) => b.setAttribute('aria-expanded', String(!!abrir)));
+  }
+  let tPerfil = null;
+  addEventListener('resize', () => { clearTimeout(tPerfil); tPerfil = setTimeout(aplicarPerfil, 120); });
+  addEventListener('orientationchange', () => setTimeout(aplicarPerfil, 250));
+  // Encuadre de la foto de cabecera (qué parte se ve cuando la pantalla la recorta).
+  const ENCUADRES = [['50% 50%', 'centro'], ['50% 20%', 'arriba'], ['50% 80%', 'abajo']];
+  const focoOk = (f) => (/^\d{1,3}% \d{1,3}%$/.test(f || '') ? f : '');
+  const focoDe = (id) => focoOk(medio(id).foco);
+  const estiloFoco = (id) => (focoDe(id) ? ` style="object-position:${focoDe(id)}"` : '');
+
   function aviso(t, ms = 3800) {
     const e = $('#toast'); e.textContent = t; e.classList.add('ver');
     clearTimeout(aviso.t); aviso.t = setTimeout(() => e.classList.remove('ver'), ms);
@@ -182,7 +245,7 @@
     $$('#nav [data-ir], #navH [data-ir], [data-ir].rail-inicio, .b-logo, .b-aj[data-ir]').forEach((b) => { b.onclick = () => ir(b.dataset.ir); });
     $$('.tituloCorto').forEach((e) => { e.textContent = portadaTexto()[1] || ''; });
     const f = P.fuente;
-    $('#railPie').innerHTML = !CONSULTA && !ed() ? '<div class="aviso-trib">Estás en la <b>vista del tribunal</b>. Para editar y ver Ajustes, vuelve al modo Editor.<button class="aVolver">Volver al modo Editor</button></div>' : !ed() ? '' : `${f ? `<span class="vivo"></span>Leído de <b>${esc(f.nombre)}</b><br>${new Date(f.fecha).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })} · se actualiza al guardar el Word` : ''}<button class="rail-aj" data-ir="ajustes">Ajustes · generar versión del tribunal</button>`;
+    $('#railPie').innerHTML = PREVIA ? '' : !CONSULTA && !ed() ? '<div class="aviso-trib">Estás en la <b>vista del tribunal</b>. Para editar y ver Ajustes, vuelve al modo Editor.<button class="aVolver">Volver al modo Editor</button></div>' : !ed() ? '' : `${f ? `<span class="vivo"></span>Leído de <b>${esc(f.nombre)}</b><br>${new Date(f.fecha).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })} · se actualiza al guardar el Word` : ''}<button class="rail-aj" data-ir="ajustes">Ajustes · generar versión del tribunal</button>`;
     $$('#railPie [data-ir]').forEach((b) => { b.onclick = () => ir(b.dataset.ir); });
     $$('.rail-ajustes').forEach((b) => { b.onclick = () => ir('ajustes'); b.classList.toggle('act', actual === 'ajustes'); });
     $$('.aVolver').forEach((b) => { b.onclick = async () => { modo = 'editor'; await window.api.ajuste('modo', modo); pintar(); }; });
@@ -216,11 +279,11 @@
     const res = pagina('resumen-ejecutivo');
     const cifras = res && res.bloques.find((b) => b.t === 'tabla' && b.filas.length === 1 && b.filas[0].every((c) => c.lineas.length >= 2 && esNumero(plano(c.lineas[0]))));
     const mp = medio('portada');
-    const fondo = mp.video ? `<video src="${esc(url(mp.video))}" autoplay muted loop playsinline></video>` : mp.fondo ? `<img class="p-foto" src="${esc(url(mp.fondo))}" alt="">` : '';
+    const fondo = mp.video ? `<video src="${esc(url(mp.video))}" autoplay muted loop playsinline></video>` : mp.fondo ? `<img class="p-foto" src="${esc(url(mp.fondo))}" alt=""${estiloFoco('portada')}>` : '';
     const palabras = String(titulo || '').split(' ').map((w, i) => `<span class="pal" style="animation-delay:${300 + i * 90}ms">${esc(w)}</span>`).join(' ');
     const tarjeta = (p) => {
       const f = fondoDe(p.id), oc = ocultas().has(p.id);
-      const m = !f ? '' : esVideo(f) ? `<video src="${esc(url(f))}" muted loop playsinline preload="metadata"></video>` : `<img src="${esc(url(f))}" alt="" loading="lazy">`;
+      const m = !f ? '' : esVideo(f) ? `<video src="${esc(url(f))}" muted loop playsinline preload="metadata"></video>` : `<img src="${esc(url(f))}" alt="" loading="lazy"${estiloFoco(p.id)}>`;
       return `<button class="tj ${f ? '' : 'sin'} rev" data-ir="${p.id}">${m}${etiqueta(p) ? `<span class="tj-n">${esc(etiqueta(p))}</span>` : ''}<span class="tj-t">${esc(p.titulo)}</span>${oc ? '<span class="oc">Oculta al tribunal</span>' : ''}</button>`;
     };
     const per = P.proyecto.personas || {};
@@ -235,7 +298,7 @@
           <p class="p-sub">${esc(sub || '')}</p>
           <div class="p-autor"><div><b>${esc(autor || '')}</b>${esc(resto[0] || '')}</div><div><b>${esc(resto[2] || '')}</b>${esc(resto[1] || '')}</div><div><b>${esc((resto[3] || '').split('·')[0])}</b>${esc((resto[3] || '').split('·').slice(1).join('·'))}</div></div>
         </div>
-        <button class="p-entrar" data-ir="${primera.id}">Entrar en el proyecto <span>→</span></button>
+        <div class="p-acciones"><button class="p-entrar" data-ir="${primera.id}">Entrar en el proyecto <span>→</span></button>${docsVisibles().length && (ed() || DOC().enPortada) ? `<button class="p-desc">⇩ Descargar el proyecto <small>${[...new Set(docsVisibles().map((x) => (x.formato === 'pdf' ? 'PDF' : 'Word')))].sort().reverse().join(' · ')}</small></button>` : ''}</div>
         ${ecg('p-ecg')}
       </div>
       ${cifras ? `<div class="cifras-banda">${cifras.filas[0].map((c) => `<div class="cifra-g rev"><strong data-cuenta="${esc(plano(c.lineas[0]))}">${esc(plano(c.lineas[0]))}</strong><span>${c.lineas.slice(1).map(tramos).join(' ')}</span></div>`).join('')}</div>` : ''}
@@ -249,11 +312,11 @@
     const editar = editando && ed();
     const p = editar ? M : p0;
     const m = medio(p.id), f = fondoDe(p.id), oc = ocultas().has(p.id);
-    const medioH = m.mosaico ? '<canvas class="h-medio h-mosaico"></canvas>' : !f ? ecg('h-ecg') : esVideo(f) ? `<video class="h-medio" src="${esc(url(f))}" autoplay muted loop playsinline></video>` : `<img class="h-medio" src="${esc(url(f))}" alt="">`;
+    const medioH = m.mosaico ? '<canvas class="h-medio h-mosaico"></canvas>' : !f ? ecg('h-ecg') : esVideo(f) ? `<video class="h-medio" src="${esc(url(f))}" autoplay muted loop playsinline${estiloFoco(p.id)}></video>` : `<img class="h-medio" src="${esc(url(f))}" alt=""${estiloFoco(p.id)}>`;
     const subs = p.subs || [];
     const ps = visibles(), i = ps.findIndex((x) => x.id === p.id), ant = ps[i - 1], sig = ps[i + 1];
-    const enlace = (x, cl, rotulo) => { if (!x) return '<span></span>'; const ff = fondoDe(x.id); return `<button class="${cl}" data-ir="${x.id}">${ff && !esVideo(ff) ? `<img src="${esc(url(ff))}" alt="">` : ''}<small>${rotulo}</small><b>${esc(etiqueta(x) ? etiqueta(x) + ' · ' : '')}${esc(x.titulo)}</b></button>`; };
-    const herr = ed() && !editar ? `<div class="h-herr"><button id="bEditar">Editar página</button><button id="bFondo">Cambiar foto o vídeo</button><button id="bOcultar" class="${oc ? 'on' : ''}">${oc ? 'Oculta al tribunal' : 'Visible para el tribunal'}</button></div>` : '';
+    const enlace = (x, cl, rotulo) => { if (!x) return '<span></span>'; const ff = fondoDe(x.id); return `<button class="${cl}" data-ir="${x.id}">${ff && !esVideo(ff) ? `<img src="${esc(url(ff))}" alt="" loading="lazy"${estiloFoco(x.id)}>` : ''}<small>${rotulo}</small><b>${esc(etiqueta(x) ? etiqueta(x) + ' · ' : '')}${esc(x.titulo)}</b></button>`; };
+    const herr = ed() && !editar ? `<div class="h-herr"><button id="bEditar">Editar página</button><button id="bFondo">Cambiar foto o vídeo</button>${f && !m.mosaico ? `<button id="bEncuadre" title="Qué parte de la foto se ve cuando la pantalla la recorta">Encuadre: ${(ENCUADRES.find(([v]) => v === (focoDe(p.id) || '50% 50%')) || ENCUADRES[0])[1]}</button>` : ''}<button id="bOcultar" class="${oc ? 'on' : ''}">${oc ? 'Oculta al tribunal' : 'Visible para el tribunal'}</button></div>` : '';
     const conf = ed() && p0.conflicto && !editar ? `<div class="aviso-cf">El Word ha cambiado esta página desde que la editaste. <button id="cfVer">Ver diferencias</button><button id="cfMia">Quedarme con mi versión</button><button id="cfWord">Usar la del Word</button></div>` : '';
     return `<section class="vista">${avisoNuevo()}${conf}
       ${ed() && oc ? '<div class="aviso-ed">Esta página está oculta: el tribunal no la verá.</div>' : ''}
@@ -529,7 +592,7 @@
     galeria({ tipo: 'fondo', nota: m.nota }, async (sel) => {
       P.proyecto.medios = P.proyecto.medios || {};
       if (!sel.rel) delete P.proyecto.medios[id];
-      else P.proyecto.medios[id] = { ...(sel.tipo === 'video' ? { video: sel.rel } : sel.tipo === 'carpeta' ? { mosaico: sel.rel } : { fondo: sel.rel }), ...(sel.nota ? { nota: sel.nota } : {}) };
+      else P.proyecto.medios[id] = { ...(sel.tipo === 'video' ? { video: sel.rel } : sel.tipo === 'carpeta' ? { mosaico: sel.rel } : { fondo: sel.rel }), ...(sel.nota ? { nota: sel.nota } : {}), ...(m.foco && (m.fondo === sel.rel || m.video === sel.rel) ? { foco: m.foco } : {}) };
       await guardarProyecto(true); pintar(true); aviso('Cabecera actualizada.');
     });
   }
@@ -558,6 +621,146 @@
   }
   async function quedarmeMia(id) { P.proyecto.ediciones[id].base = original(id).huella; await guardarProyecto(true); pintar(); aviso('Se mantiene tu versión.'); }
 
+
+  /* ---------- Ajustes › Pantallas ---------- */
+  const ICONOS = {
+    movil: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="15" y="5" width="18" height="38" rx="4"/><path d="M21 38h6"/></svg>',
+    tablet: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="6" width="32" height="36" rx="4"/><path d="M21 37h6"/></svg>',
+    ordenador: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="9" width="32" height="22" rx="2.5"/><path d="M3 37h42l-3 4H6z"/></svg>',
+    grande: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="6" width="42" height="27" rx="2.5"/><path d="M24 33v7M15 42h18"/></svg>',
+  };
+  const nombreD = (id) => DISPOS[pos(id)].nombre.toLowerCase();
+  function resumenPantalla(real, sel) {
+    const d = disenoPara(real, sel);
+    const t = d === real ? '<b>su propio diseño</b>'
+      : pos(d) > pos(real) ? `el diseño de <b>${nombreD(d)}</b>, reducido para que quepa`
+      : pos(d) < pos('ordenador') ? `el diseño de <b>${nombreD(d)}</b>, centrado con márgenes` : `el diseño de <b>${nombreD(d)}</b>, a todo el ancho`;
+    return `<span class="v">${t}</span>`;
+  }
+  function seccionPantallas() {
+    const sel = DISP(), aqui = tipoDe(anchoReal());
+    return `<div class="aj-sec" id="secPant"><h2>Pantallas del tribunal</h2><p>Marca en qué pantallas se va a consultar el proyecto: una, varias o todas. Cada pantalla marcada tiene un diseño preparado para ella (menú, tamaño de letra, fotos y tablas). Las que no marques usan el diseño marcado más parecido. Se aplica a la vista Tribunal, a la web publicada y a las versiones que generes.</p>
+      <div class="pant">${DISPOS.map((d) => `<button class="pa ${sel[d.id] ? 'on' : ''}" data-disp="${d.id}" aria-pressed="${!!sel[d.id]}"><span class="pa-ic">${ICONOS[d.id]}</span><b>${esc(d.nombre)}</b><small>${esc(d.rango)}</small><i class="pa-ok" aria-hidden="true"></i>${d.id === aqui ? '<em>Esta pantalla</em>' : ''}</button>`).join('')}</div>
+      <div class="aj-fila pant-rap"><button data-disp-todas="1">Marcar todas</button><button data-disp-solo="ordenador">Solo ordenador</button></div>
+      <div class="pant-res"><b>Así se verá</b><ul>${DISPOS.map((d) => `<li><span>${esc(d.nombre)}</span>${resumenPantalla(d.id, sel)}</li>`).join('')}</ul></div>
+      ${window.api && window.api.vistaPrevia ? `<div class="pant-prev"><span>Vista previa, tal como la verá el tribunal:</span><div class="aj-fila"><button data-previa="movil">Teléfono</button><button data-previa="tablet">Tablet vertical</button><button data-previa="tabletH">Tablet horizontal</button><button data-previa="ordenador">Portátil</button><button data-previa="grande">Proyector</button></div></div>` : ''}
+    </div>`;
+  }
+  async function guardarPantallas(d) {
+    if (!DISPOS.some((x) => d[x.id])) { aviso('Deja marcada al menos una pantalla.'); return; }
+    P.ajustes.dispositivos = d;
+    if (!CONSULTA) await window.api.ajuste('dispositivos', d);
+    const sec = $('#secPant'); if (sec) { sec.outerHTML = seccionPantallas(); conectarPantallas(); }
+    aplicarPerfil();
+    aviso(`Preparado para: ${DISPOS.filter((x) => d[x.id]).map((x) => x.nombre.toLowerCase()).join(', ')}.`);
+  }
+  function conectarPantallas() {
+    $$('[data-disp]').forEach((b) => { b.onclick = () => { const d = { ...DISP() }; d[b.dataset.disp] = !d[b.dataset.disp]; guardarPantallas(d); }; });
+    $$('[data-disp-todas]').forEach((b) => { b.onclick = () => guardarPantallas({ movil: true, tablet: true, ordenador: true, grande: true }); });
+    $$('[data-disp-solo]').forEach((b) => { b.onclick = () => guardarPantallas({ movil: false, tablet: false, ordenador: false, grande: false, [b.dataset.dispSolo]: true }); });
+    $$('[data-previa]').forEach((b) => { b.onclick = () => window.api.vistaPrevia(b.dataset.previa); });
+  }
+
+
+  /* ---------- v0.9 · Documentos del proyecto (Word y PDF) ---------- */
+  const ESTD = () => P.estilosDoc || { institucional: 'Institucional', editorial: 'Editorial con fotografías', clasico: 'Académico clásico' };
+  const DESC_ESTD = { institucional: 'Portada blanca con franja granate y número de capítulo grande. Bahnschrift (DIN) y Arial.', editorial: 'Portada y capítulos con fotografías reales de las sesiones, contraportada. Texto en Georgia.', clasico: 'Composición centrada, títulos con letra de libro y texto justificado. Sin fotografías.' };
+  function DOC() {
+    const def = P.documentosDef || {}, o = (P.ajustes && P.ajustes.documentos) || {};
+    const estilos = {}; Object.keys(ESTD()).forEach((k) => { estilos[k] = { ...((def.estilos || {})[k] || {}), ...((o.estilos || {})[k] || {}) }; });
+    return { ...def, ...o, estilos, portada: { ...(o.portada || {}) } };
+  }
+  const docsTodos = () => ((P.documentos && P.documentos.archivos) || []);
+  // Lo que se ofrece para descargar: en el modo Editor, todo lo generado; para el tribunal, solo si está permitido.
+  const docsVisibles = () => (ed() ? docsTodos() : DOC().descargar ? docsTodos() : []);
+  const tamTxt = (b) => (b >= 1e6 ? `${(b / 1e6).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(b / 1e3))} KB`);
+  function listaDescargas(cl = '') {
+    const ds = docsVisibles(); if (!ds.length) return '';
+    const grupos = Object.keys(ESTD()).map((k) => [k, ds.filter((x) => x.estilo === k)]).filter(([, l]) => l.length);
+    return `<div class="desc-lista ${cl}">${grupos.map(([k, l]) => `<div class="desc-est"><span>${esc(ESTD()[k])}</span><div>${l.sort((a, b) => (a.formato === 'pdf' ? -1 : 1)).map((x) => `<button class="desc-b ${x.formato}" data-doc="${esc(x.rel)}" title="Descargar ${esc(x.rel.split('/').pop())}"><b>${x.formato === 'pdf' ? 'PDF' : 'Word'}</b><small>${tamTxt(x.bytes || 0)}</small></button>`).join('')}</div></div>`).join('')}${P.pdfProyecto && MED().descargarProyecto ? `<div class="desc-est"><span>Proyecto original</span><div><button class="desc-b pdf" data-doc-orig="1"><b>PDF</b><small>original</small></button></div></div>` : ''}</div>`;
+  }
+  async function descargarDoc(rel) {
+    if (CONSULTA) { const a = document.createElement('a'); a.href = url(rel); a.download = rel.split('/').pop(); document.body.append(a); a.click(); a.remove(); return; }
+    const r = await window.api.descargarDocumento(rel, !ed());
+    if (r && r.ok) aviso('Documento guardado.'); else if (r && r.error) aviso(r.error, 6000);
+  }
+  function abrirDescargas() {
+    const h = listaDescargas('modal');
+    if (!h) { descargarProyecto(); return; }
+    let m = $('#descargas');
+    if (!m) { m = document.createElement('div'); m.id = 'descargas'; document.body.append(m); m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('.dc-cerrar')) m.hidden = true; }); }
+    m.innerHTML = `<div class="dc-caja" role="dialog" aria-label="Descargar el proyecto"><div class="dc-cab"><h2>Descargar el proyecto</h2><button class="dc-cerrar" aria-label="Cerrar">×</button></div><p>Elige el estilo y el formato.${ed() && !DOC().descargar ? ' <b>Solo lo ves tú:</b> la descarga está desactivada para el tribunal (Ajustes › Documentos).' : ''}</p>${h}</div>`;
+    m.hidden = false;
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-doc]'); if (b) { e.preventDefault(); descargarDoc(b.dataset.doc); return; }
+    if (e.target.closest('[data-doc-orig]')) { e.preventDefault(); descargarProyecto(); return; }
+    if (e.target.closest('.p-desc')) { e.preventDefault(); abrirDescargas(); }
+  });
+  // Ajustes
+  let docUltimoCambio = 0;
+  function seccionDocumentos() {
+    const o = DOC(), d = P.documentos || { archivos: [] }, tx = portadaTexto();
+    const gen = d.generado ? new Date(d.generado) : null;
+    const viejo = gen && (docUltimoCambio > gen.getTime() || (d.huella && P.documentosHuella && d.huella !== P.documentosHuella));
+    const campo = (k, et, ph, area) => `<label class="campo">${et}${area ? `<textarea data-docc="${k}" rows="${area}" placeholder="${esc(ph || '')}">${esc(o[k] || '')}</textarea>` : `<input data-docc="${k}" value="${esc(o[k] || '')}" placeholder="${esc(ph || '')}">`}</label>`;
+    const cp = (k, et, ph) => `<label class="campo">${et}<input data-docp="${k}" value="${esc(o.portada[k] || '')}" placeholder="${esc(ph || '')}"></label>`;
+    return `<div class="aj-sec" id="secDoc"><h2>Documentos del proyecto · Word y PDF</h2><p>Versión para imprimir o enviar, con la identidad visual de la Universidad de Murcia (Pantone 187 y Cool Gray 11, tipografía DIN). Marca uno, dos o los tres estilos y, en cada uno, Word, PDF o ambos. El PDF se crea con Microsoft Word.</p>
+      <div class="estd">${Object.entries(ESTD()).map(([k, n]) => `<div class="ed-c ${o.estilos[k].word || o.estilos[k].pdf ? 'on' : ''}"><div class="ed-mini m-${k}"><i></i><i></i><i></i></div><b>${esc(n)}</b><small>${esc(DESC_ESTD[k] || '')}</small><div class="ed-fmt"><button data-docest="${k}" data-docfmt="word" class="${o.estilos[k].word ? 'pub-on' : ''}" aria-pressed="${!!o.estilos[k].word}">Word</button><button data-docest="${k}" data-docfmt="pdf" class="${o.estilos[k].pdf ? 'pub-on' : ''}" aria-pressed="${!!o.estilos[k].pdf}">PDF</button></div></div>`).join('')}</div>
+      <div class="doc-campos">${campo('encabezado', 'Encabezado de página')}${campo('pie', 'Pie de página (a la izquierda; el número de página va a la derecha)')}</div>
+      <details class="doc-det"><summary>Textos de la portada</summary><p class="pub-nota">Vacío = se usa el texto del Word del índice (el que ves en gris).</p>
+        ${cp('ceja', 'Antetítulo', tx[0])}${cp('titulo', 'Título', tx[1])}${cp('subtitulo', 'Subtítulo', tx[2])}${cp('autor', 'Autor', tx[3])}
+        <label class="campo">Líneas bajo el autor (una por línea)<textarea data-docp="lineas" rows="3" placeholder="${esc([tx[4], tx[5], tx[6]].filter(Boolean).join('\n'))}">${esc((o.portada.lineas || []).join('\n'))}</textarea></label>${cp('version', 'Versión y fecha', tx[7])}</details>
+      <details class="doc-det" open><summary>Agradecimientos (al final del documento)</summary><p class="pub-nota">Deja una línea en blanco entre párrafos. Si lo dejas vacío, no se incluye la página.</p>
+        ${campo('agradecimientos', '', '', 9)}<div class="doc-campos">${campo('firma', 'Firma')}${campo('lugarFecha', 'Lugar y fecha')}</div></details>
+      <div class="aj-fila doc-acc"><button id="docGenerar" class="pub-ya">Generar documentos</button><button id="docCarpeta">Abrir carpeta</button></div>
+      <div id="docProg" class="pub-est"></div>
+      ${d.archivos.length ? `<div class="doc-hechos"><p class="pub-est ${viejo ? 'mal' : 'bien'}">${gen ? `Generados el ${esc(horaEs(d.generado))}.` : ''} ${viejo ? 'Has cambiado el proyecto o los textos después: vuelve a generarlos para que estén al día.' : ''}</p>${d.aviso ? `<p class="pub-est mal">${esc(d.aviso)} Los Word están creados; para el PDF, ábrelos en Word y usa Guardar como › PDF.</p>` : ''}
+        <div class="doc-lista">${d.archivos.map((x) => `<div class="doc-f"><span class="doc-t ${x.formato}">${x.formato === 'pdf' ? 'PDF' : 'Word'}</span><span>${esc(ESTD()[x.estilo] || x.estilo)}<small>${esc(x.rel.split('/').pop())} · ${tamTxt(x.bytes || 0)}</small></span><button data-docabrir="${esc(x.rel)}">Abrir</button><button data-doc="${esc(x.rel)}">Guardar una copia…</button></div>`).join('')}</div></div>` : ''}
+      <div class="pub-fila"><span class="pub-et">Permitir que el tribunal los descargue<small class="aj-desc">En la vista Tribunal, la web publicada y las versiones que generes.</small></span><div class="aj-fila"><button data-docop="descargar" data-v="1" class="${o.descargar ? 'pub-on' : ''}">Sí</button><button data-docop="descargar" data-v="0" class="${o.descargar ? '' : 'pub-on'}">No</button></div></div>
+      <div class="pub-fila"><span class="pub-et">Mostrarlos en la portada al abrir el proyecto<small class="aj-desc">Botón «Descargar el proyecto» junto a «Entrar», a la vista nada más abrir.</small></span><div class="aj-fila"><button data-docop="enPortada" data-v="1" class="${o.enPortada ? 'pub-on' : ''}" ${o.descargar ? '' : 'disabled'}>Sí</button><button data-docop="enPortada" data-v="0" class="${o.enPortada ? '' : 'pub-on'}" ${o.descargar ? '' : 'disabled'}>No</button></div></div>
+    </div>`;
+  }
+  let tDoc = null;
+  function guardarDoc(cambio, pintarDespues) {
+    const o = (P.ajustes.documentos = { ...((P.ajustes && P.ajustes.documentos) || {}), ...cambio });
+    docUltimoCambio = Date.now();
+    clearTimeout(tDoc);
+    const hacer = async () => { if (!CONSULTA) await window.api.ajuste('documentos', o); if (pintarDespues) { const sec = $('#secDoc'); if (sec) { sec.outerHTML = seccionDocumentos(); conectarDocumentos(); } } };
+    if (pintarDespues) return hacer(); tDoc = setTimeout(hacer, 700);
+  }
+  function conectarDocumentos() {
+    $$('[data-docest]').forEach((b) => { b.onclick = () => {
+      const o = DOC(), k = b.dataset.docest, f = b.dataset.docfmt;
+      const estilos = { ...((P.ajustes.documentos || {}).estilos || {}) }; estilos[k] = { ...o.estilos[k], [f]: !o.estilos[k][f] };
+      guardarDoc({ estilos }, true);
+    }; });
+    $$('[data-docc]').forEach((e) => { e.oninput = () => guardarDoc({ [e.dataset.docc]: e.value }); });
+    $$('[data-docp]').forEach((e) => { e.oninput = () => { const pt = { ...(DOC().portada) }; const v = e.dataset.docp === 'lineas' ? e.value.split('\n').map((x) => x.trim()).filter(Boolean) : e.value; if ((Array.isArray(v) && !v.length) || v === '') delete pt[e.dataset.docp]; else pt[e.dataset.docp] = v; guardarDoc({ portada: pt }); }; });
+    $$('[data-docop]').forEach((b) => { b.onclick = async () => { const v = b.dataset.v === '1'; if (DOC()[b.dataset.docop] === v) return; await guardarDoc({ [b.dataset.docop]: v }, true); pintarNavDesc(); aviso(b.dataset.docop === 'descargar' ? (v ? 'El tribunal podrá descargar los documentos.' : 'El tribunal no podrá descargarlos.') : (v ? 'Se mostrarán en la portada.' : 'No se mostrarán en la portada.')); }; });
+    $$('[data-docabrir]').forEach((b) => { b.onclick = async () => { const r = await window.api.abrirDocumento(b.dataset.docabrir); if (r) aviso(String(r), 6000); }; });
+    const c = $('#docCarpeta'); if (c) c.onclick = () => window.api.abrirCarpeta('documentos');
+    const g = $('#docGenerar'); if (g) g.onclick = async () => {
+      if (generandoDocs) return;
+      await guardarProyecto(true); clearTimeout(tDoc); await window.api.ajuste('documentos', P.ajustes.documentos || {});
+      generandoDocs = true; g.disabled = true; $('#docProg').textContent = 'Preparando…';
+      const r = await window.api.generarDocumentos();
+      generandoDocs = false;
+      if (r.error) { $('#docProg').textContent = ''; g.disabled = false; aviso(r.error, 8000); return; }
+      P.documentos = r.documentos; P.documentosHuella = r.documentosHuella; docUltimoCambio = 0;
+      const sec = $('#secDoc'); if (sec) { sec.outerHTML = seccionDocumentos(); conectarDocumentos(); }
+      pintarNavDesc();
+      aviso(r.aviso ? 'Word generados. ' + r.aviso : `Listo: ${r.documentos.archivos.length} documentos.`, r.aviso ? 9000 : 4000);
+    };
+  }
+  let generandoDocs = false;
+  if (!CONSULTA && window.api.alProgresoDoc) window.api.alProgresoDoc((p) => { const e = $('#docProg'); if (e && generandoDocs) e.textContent = p.fase + (p.n ? ` (${p.i} de ${p.n})` : '…'); });
+  // Botón de la barra: «Descargar proyecto» abre la lista si hay documentos.
+  function pintarNavDesc() {
+    const ver = !!(docsVisibles().length || (MED().descargarProyecto && P.pdfProyecto));
+    $$('[data-desc-proy]').forEach((b) => { b.hidden = !ver || !!PREVIA && !DOC().descargar; });
+  }
+
   /* ---------- Ajustes ---------- */
   function vistaAjustes() {
     const menu = P.ajustes.menu || 'vertical';
@@ -568,6 +771,8 @@
       <div class="aj-sec"><h2>Presentación del menú</h2><p>Cómo se mueve el tribunal por el proyecto. Se aplica también a las versiones que generes.</p>
         <div class="opciones"><button class="op ${menu === 'vertical' ? 'on' : ''}" data-menu="vertical"><div class="mini v"></div><b>Menú vertical</b><small>Columna a la izquierda con todos los apartados.</small></button>
         <button class="op ${menu === 'horizontal' ? 'on' : ''}" data-menu="horizontal"><div class="mini h"></div><b>Menú horizontal</b><small>Barra arriba con menús desplegables por grupos.</small></button></div></div>
+      ${seccionPantallas()}
+      ${seccionDocumentos()}
       <div class="aj-sec"><h2>Páginas</h2><p>Orden en que aparecen y si el tribunal las ve. El texto se cambia con «Editar página».</p>
         <div class="pags">${ps.map((p, i) => `<div class="pg ${ocultas().has(p.id) ? 'oc' : ''}"><span class="n">${esc(etiqueta(p))}</span><span>${esc(p.titulo)} ${p.conflicto ? '<span class="tag">‼ cambió en el Word</span>' : p.editada ? '<span class="tag" style="color:#0b3440">editada</span>' : ''}</span><button data-sube="${i}" ${i ? '' : 'disabled'}>↑</button><button data-baja="${i}" ${i < ps.length - 1 ? '' : 'disabled'}>↓</button><button data-oc="${p.id}">${ocultas().has(p.id) ? 'Mostrar' : 'Ocultar'}</button></div>`).join('')}</div>
         <div class="aj-fila" style="margin-top:12px"><button id="ajNueva">+ Añadir página</button><button id="ajRestaurar">Restaurar páginas eliminadas (${(P.proyecto.eliminadas || []).length})</button><button id="ajOrden">Volver al orden del Word</button></div></div>
@@ -659,7 +864,7 @@
     const bc = $('#pubCopiar'); if (bc) bc.onclick = async () => { try { await navigator.clipboard.writeText(s.url); aviso('Enlace copiado.'); } catch (x) { aviso('No se ha podido copiar.'); } };
     $('#pubYa').onclick = async () => { $('#pubYa').disabled = true; const r = await window.api.publicar(); if (r && r.error) aviso(r.error); pintarPub(); };
   }
-  if (!CONSULTA) {
+  if (!CONSULTA && !PREVIA) {
     $$('[data-ir="ajustes"]').forEach((b) => b.classList.remove('solo-editor'));
     pastillaWeb([[document.body, false]], () => ir('ajustes'));
   }
@@ -671,6 +876,8 @@
   });
   function conectarAjustes(e) {
     pintarPub();
+    conectarPantallas();
+    conectarDocumentos();
     $('#ajNueva').onclick = nuevaPagina;
     $('#ajRestaurar').onclick = async () => {
       if (!(P.proyecto.eliminadas || []).length) { aviso('No hay páginas eliminadas.'); return; }
@@ -781,20 +988,22 @@
     const e = $('#escena'), arriba = e.scrollTop;
     document.body.classList.toggle('tribunal', modo === 'tribunal');
     // Botón «Descargar proyecto» (Ajustes › PDF, vídeos y descargas)
-    const verDesc = !!(MED().descargarProyecto && P.pdfProyecto);
+    const verDesc = !!(docsVisibles().length || (MED().descargarProyecto && P.pdfProyecto));
     [['#barra .b-der', 'b-aj b-desc'], ['.rail-cab', 'rail-desc']].forEach(([sel, cl]) => {
       const caja = $(sel); if (!caja) return;
       let b = caja.querySelector('[data-desc-proy]');
-      if (!b) { b = document.createElement('button'); b.className = cl; b.dataset.descProy = '1'; b.textContent = '⇩ Descargar proyecto'; b.title = 'Descargar el proyecto de investigación (PDF)'; b.onclick = () => descargarProyecto(); caja.prepend(b); }
+      if (!b) { b = document.createElement('button'); b.className = cl; b.dataset.descProy = '1'; b.textContent = '⇩ Descargar proyecto'; b.title = 'Descargar el proyecto de investigación'; b.onclick = () => abrirDescargas(); caja.prepend(b); }
       b.hidden = !verDesc;
     });
-    document.body.classList.toggle('consulta', CONSULTA);
+    document.body.classList.toggle('consulta', CONSULTA || !!PREVIA);
+    document.body.classList.toggle('previa', !!PREVIA);
     document.body.classList.toggle('horiz', (P.ajustes.menu || 'vertical') === 'horizontal');
     document.body.classList.toggle('editando', editando);
+    aplicarPerfil();
     $$('.mEd').forEach((b) => b.setAttribute('aria-pressed', modo === 'editor')); $$('.mTr').forEach((b) => b.setAttribute('aria-pressed', modo === 'tribunal'));
     $('#barraEd').hidden = !editando;
     if (!P.documento) { e.innerHTML = `<div class="vacio">${esc(P.error || 'No hay índice.')}<br><br>Guarda el Word del proyecto en la carpeta <b>Indices</b> y la aplicación lo leerá sola.</div>`; pintarNav(); return; }
-    if (actual === 'ajustes' && CONSULTA) actual = 'portada';
+    if (actual === 'ajustes' && (CONSULTA || PREVIA)) actual = 'portada';
     if (actual !== 'portada' && actual !== 'ajustes' && !visibles().some((p) => p.id === actual)) actual = 'portada';
     pintarNav();
     e.innerHTML = actual === 'portada' ? vistaPortada() : actual === 'ajustes' ? vistaAjustes() : actual === 'abreviaturas' ? vistaAbreviaturas() : vistaPagina(pagina(actual));
@@ -814,6 +1023,12 @@
     }));
     on('edBorrarPagina', eliminarPagina);
     on('bFondo', () => elegirFondo(actual));
+    on('bEncuadre', async () => {
+      const m = P.proyecto.medios && P.proyecto.medios[actual]; if (!m) return;
+      const i = ENCUADRES.findIndex(([v]) => v === (focoDe(actual) || '50% 50%')), [v, n] = ENCUADRES[(i + 1) % ENCUADRES.length];
+      if (v === '50% 50%') delete m.foco; else m.foco = v;
+      await guardarProyecto(true); pintar(true); aviso(`Encuadre: ${n}.`);
+    });
     on('bFondoPortada', () => elegirFondo('portada'));
     on('bVisto', async () => { await marcarVisto(); pintar(true); });
     on('cfVer', () => verDiferencias(actual));
@@ -856,6 +1071,7 @@
   async function ir(id) {
     if (!id) return;
     if (editando) await terminarEdicion();
+    menuMovil(false);
     actual = id;
     $('#escena').scrollTo({ top: 0, behavior: 'instant' });
     pintar();
@@ -869,6 +1085,9 @@
   }
   $('#escena').addEventListener('scroll', progreso, { passive: true });
   $('#lupa').onclick = () => { $('#lupa').hidden = true; };
+  $$('.b-menu').forEach((b) => { b.onclick = () => menuMovil(!document.body.classList.contains('menu-abierto')); });
+  $('#veloMenu').onclick = () => menuMovil(false);
+  $$('.rail-cerrar').forEach((b) => { b.onclick = () => menuMovil(false); });
   $$('#barraEd [data-cmd]').forEach((b) => { b.onmousedown = (ev) => { ev.preventDefault(); document.execCommand(b.dataset.cmd); const el = document.activeElement; if (el && el.dataset.k) { aplicarTexto(el.dataset.k, el); guardarEdicion(); } }; });
   $('#beFin').onclick = terminarEdicion;
   $$('.bContenido').forEach((b) => { b.onclick = editarContenido; });
@@ -884,7 +1103,7 @@
       aviso(`Índice actualizado: ${paquete.fuente.nombre}`, 5000);
     });
     // Primera vez: se toma como referencia la versión actual del índice.
-    if (P.documento && !P.proyecto.visto) await marcarVisto();
+    if (P.documento && !P.proyecto.visto && !PREVIA) await marcarVisto();
   }
 
   /* ---------- Buscador ---------- */
@@ -929,13 +1148,13 @@
       else if (e.key === 'Enter' && rs[selR]) saltar(rs[selR]);
       return;
     }
-    if (e.key === 'Escape') { if (!$('#lupa').hidden) $('#lupa').hidden = true; if (!$('#galeria').hidden) $('#galeria').hidden = true; if (!$('#dif').hidden) $('#dif').hidden = true; return; }
+    if (e.key === 'Escape') { menuMovil(false); if (!$('#lupa').hidden) $('#lupa').hidden = true; if (!$('#galeria').hidden) $('#galeria').hidden = true; if (!$('#dif').hidden) $('#dif').hidden = true; return; }
     if (e.target.matches('input, textarea, [contenteditable]') || editando) return;
     const ps = ['portada', ...visibles().map((p) => p.id)], i = ps.indexOf(actual);
     if (e.key === 'ArrowRight' && i < ps.length - 1) ir(ps[i + 1]);
     if (e.key === 'ArrowLeft' && i > 0) ir(ps[i - 1]);
   });
 
-  window.__app = { ir, pintar, estado: () => ({ actual, modo, editando, paginas: visibles().map((p) => p.id), menu: P.ajustes.menu }), P: () => P };
+  window.__app = { ir, pintar, estado: () => ({ actual, modo, editando, paginas: visibles().map((p) => p.id), menu: P.ajustes.menu, perfil: perfilAct, encajado: document.body.classList.contains('encajado') }), P: () => P };
   pintar();
 })();

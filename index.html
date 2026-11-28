@@ -4,7 +4,8 @@
 <meta name="robots" content="noindex,nofollow">
 <link rel="stylesheet" href="acceso.css">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#00151b">
 <title>Proyecto de investigación · Cátedra</title>
 <link rel="stylesheet" href="app.css">
 </head>
@@ -29,6 +30,7 @@
   <div class="rail-cab">
     <img class="logo" src="marca/Logosimbolo-negativo.png" alt="Universidad de Murcia">
     <div class="modo" role="group" aria-label="Vista"><button class="mEd" aria-pressed="true">Editor</button><button class="mTr" aria-pressed="false">Tribunal</button></div>
+    <button class="rail-cerrar" aria-label="Cerrar el menú">×</button>
   </div>
   <button class="rail-inicio" data-ir="portada"><span>Proyecto de investigación</span><b class="tituloCorto"></b></button>
   <button class="buscar bBuscar"><span>Buscar en el proyecto</span><kbd>Ctrl K</kbd></button>
@@ -38,6 +40,7 @@
   <div class="rail-pie" id="railPie"></div>
 </aside>
 <header id="barra" aria-label="Menú principal">
+  <button class="b-menu" aria-label="Abrir el menú" aria-expanded="false" aria-controls="rail"><i aria-hidden="true"></i><span>Menú</span></button>
   <button class="b-logo" data-ir="portada"><img src="marca/Logosimbolo-negativo.png" alt="Universidad de Murcia"></button>
   <nav id="navH"></nav>
   <div class="b-der">
@@ -47,6 +50,7 @@
     <button class="b-aj solo-editor bContenido">✎ Editar contenido</button>
   </div>
 </header>
+<div id="veloMenu" aria-hidden="true"></div>
 <main id="escena" tabindex="-1"></main>
 <div id="buscador" hidden><div class="bu-caja"><input id="buInput" type="search" placeholder="Buscar una palabra, un dato, una referencia…" autocomplete="off"><div id="buRes"></div></div></div>
 <div id="galeria" hidden></div>
