@@ -668,3 +668,8 @@ body.pf-movil .doc-f { grid-template-columns: 48px 1fr; }
 .p-desc small { font-size: 12px; opacity: .75; margin-left: 6px; font-weight: 400; }
 #docGenerar { background: var(--navy); color: #fff; border-color: var(--navy); padding: 11px 20px; font-weight: 500; }
 #docGenerar:disabled { opacity: .5; }
+.ed-fmt button:not(.pub-on) { color: #8a9196; border-style: dashed; background: transparent; }
+.doc-estado { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; font-size: 14px; line-height: 1.45; }
+.doc-estado.aviso { background: #fff4dc; color: #6b4b00; }
+.doc-estado.bien { background: #e6f4ea; color: #1e6b3a; }
+.p-desc.pendiente { border-style: dashed; opacity: .85; }

@@ -298,7 +298,7 @@
           <p class="p-sub">${esc(sub || '')}</p>
           <div class="p-autor"><div><b>${esc(autor || '')}</b>${esc(resto[0] || '')}</div><div><b>${esc(resto[2] || '')}</b>${esc(resto[1] || '')}</div><div><b>${esc((resto[3] || '').split('·')[0])}</b>${esc((resto[3] || '').split('·').slice(1).join('·'))}</div></div>
         </div>
-        <div class="p-acciones"><button class="p-entrar" data-ir="${primera.id}">Entrar en el proyecto <span>→</span></button>${docsVisibles().length && (ed() || DOC().enPortada) ? `<button class="p-desc">⇩ Descargar el proyecto <small>${[...new Set(docsVisibles().map((x) => (x.formato === 'pdf' ? 'PDF' : 'Word')))].sort().reverse().join(' · ')}</small></button>` : ''}</div>
+        <div class="p-acciones"><button class="p-entrar" data-ir="${primera.id}">Entrar en el proyecto <span>→</span></button>${ed() && !docsVisibles().length ? '<button class="p-desc pendiente" title="Solo lo ves tú">⇩ Descargar el proyecto <small>falta generar los documentos (Ajustes)</small></button>' : ''}${docsVisibles().length && (ed() || DOC().enPortada) ? `<button class="p-desc">⇩ Descargar el proyecto <small>${[...new Set(docsVisibles().map((x) => (x.formato === 'pdf' ? 'PDF' : 'Word')))].sort().reverse().join(' · ')}</small></button>` : ''}</div>
         ${ecg('p-ecg')}
       </div>
       ${cifras ? `<div class="cifras-banda">${cifras.filas[0].map((c) => `<div class="cifra-g rev"><strong data-cuenta="${esc(plano(c.lineas[0]))}">${esc(plano(c.lineas[0]))}</strong><span>${c.lineas.slice(1).map(tramos).join(' ')}</span></div>`).join('')}</div>` : ''}
@@ -695,6 +695,7 @@
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-doc]'); if (b) { e.preventDefault(); descargarDoc(b.dataset.doc); return; }
     if (e.target.closest('[data-doc-orig]')) { e.preventDefault(); descargarProyecto(); return; }
+    if (e.target.closest('.p-desc.pendiente')) { e.preventDefault(); e.stopPropagation(); ir('ajustes').then(() => setTimeout(() => { const x = $('#secDoc'); if (x) x.scrollIntoView({ behavior: 'smooth' }); }, 300)); return; }
     if (e.target.closest('.p-desc')) { e.preventDefault(); abrirDescargas(); }
   });
   // Ajustes
@@ -706,7 +707,8 @@
     const campo = (k, et, ph, area) => `<label class="campo">${et}${area ? `<textarea data-docc="${k}" rows="${area}" placeholder="${esc(ph || '')}">${esc(o[k] || '')}</textarea>` : `<input data-docc="${k}" value="${esc(o[k] || '')}" placeholder="${esc(ph || '')}">`}</label>`;
     const cp = (k, et, ph) => `<label class="campo">${et}<input data-docp="${k}" value="${esc(o.portada[k] || '')}" placeholder="${esc(ph || '')}"></label>`;
     return `<div class="aj-sec" id="secDoc"><h2>Documentos del proyecto · Word y PDF</h2><p>Versión para imprimir o enviar, con la identidad visual de la Universidad de Murcia (Pantone 187 y Cool Gray 11, tipografía DIN). Marca uno, dos o los tres estilos y, en cada uno, Word, PDF o ambos. El PDF se crea con Microsoft Word.</p>
-      <div class="estd">${Object.entries(ESTD()).map(([k, n]) => `<div class="ed-c ${o.estilos[k].word || o.estilos[k].pdf ? 'on' : ''}"><div class="ed-mini m-${k}"><i></i><i></i><i></i></div><b>${esc(n)}</b><small>${esc(DESC_ESTD[k] || '')}</small><div class="ed-fmt"><button data-docest="${k}" data-docfmt="word" class="${o.estilos[k].word ? 'pub-on' : ''}" aria-pressed="${!!o.estilos[k].word}">Word</button><button data-docest="${k}" data-docfmt="pdf" class="${o.estilos[k].pdf ? 'pub-on' : ''}" aria-pressed="${!!o.estilos[k].pdf}">PDF</button></div></div>`).join('')}</div>
+      ${!d.archivos.length ? '<p class="doc-estado aviso"><b>Aún no hay documentos.</b> Marca los estilos y formatos y pulsa «Generar documentos» (más abajo). Después aparecerán en la portada.</p>' : !o.descargar ? '<p class="doc-estado aviso"><b>El tribunal no los ve:</b> activa «Permitir que el tribunal los descargue» (al final de este apartado).</p>' : `<p class="doc-estado bien"><b>${d.archivos.length} documentos listos</b> y visibles para el tribunal${o.enPortada ? ' en la portada' : ''}.</p>`}
+      <div class="estd">${Object.entries(ESTD()).map(([k, n]) => `<div class="ed-c ${o.estilos[k].word || o.estilos[k].pdf ? 'on' : ''}"><div class="ed-mini m-${k}"><i></i><i></i><i></i></div><b>${esc(n)}</b><small>${esc(DESC_ESTD[k] || '')}</small><div class="ed-fmt"><button data-docest="${k}" data-docfmt="word" class="${o.estilos[k].word ? 'pub-on' : ''}" aria-pressed="${!!o.estilos[k].word}">${o.estilos[k].word ? '✓ ' : ''}Word</button><button data-docest="${k}" data-docfmt="pdf" class="${o.estilos[k].pdf ? 'pub-on' : ''}" aria-pressed="${!!o.estilos[k].pdf}">${o.estilos[k].pdf ? '✓ ' : ''}PDF</button></div></div>`).join('')}</div>
       <div class="doc-campos">${campo('encabezado', 'Encabezado de página')}${campo('pie', 'Pie de página (a la izquierda; el número de página va a la derecha)')}</div>
       <details class="doc-det"><summary>Textos de la portada</summary><p class="pub-nota">Vacío = se usa el texto del Word del índice (el que ves en gris).</p>
         ${cp('ceja', 'Antetítulo', tx[0])}${cp('titulo', 'Título', tx[1])}${cp('subtitulo', 'Subtítulo', tx[2])}${cp('autor', 'Autor', tx[3])}
